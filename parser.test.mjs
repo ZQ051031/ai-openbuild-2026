@@ -97,6 +97,14 @@ test("parenthesized feedback dates retain their optional draft context", () => {
   }
 });
 
+test("dates in parenthetical notes do not change the main deadline's context", () => {
+  const result = analyzeBrief("Final report due 8 December (optional draft 1 December; feedback within a week)", "2026-11-24");
+  assert.deepEqual(result.deadlines.map(({ date }) => date), ["2026-12-08", "2026-12-01"]);
+  assert.equal(result.deadlines[0].source, "Final report due 8 December");
+  assert.match(result.deadlines[1].source, /optional draft/i);
+  assert.equal(result.plan.at(-1).date, "2026-12-08");
+});
+
 test("a standalone deadline closes the deliverables list without a blank line", () => {
   for (const [item, deadline] of [
     ["- Submit your report", "Final report by 8 December 2026"],

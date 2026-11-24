@@ -8,6 +8,8 @@ const clockPattern = "(?:\\d{1,2}:\\d{2}(?:\\s*[ap]m)?|\\d{1,2}\\s*[ap]m|noon|mi
 const byDatePattern = new RegExp(`\\bby\\s+(?:${weekdayPattern}(?:,\\s*|\\s+))?(?:(?:at\\s+)?${clockPattern}(?:,\\s*|\\s+(?:on\\s+)?))?(?=${datePattern.source})`, "i");
 const hasDeadlineCue = (line) => duePattern.test(line) || byDatePattern.test(line);
 const deadlineClauseToken = /[()]|\s*;\s*|(?<=[.!?])\s+|(?:,\s*(?:and\s+)?|\s+and\s+)(?=(?:the\s+)?(?:draft|final|checkpoint)\b)/gi;
+const optionalDeadlinePattern = /\b(?:draft|checkpoint|optional)\b/i;
+const finalDeadlinePattern = /\bfinal\b/i;
 const actionPattern = /^(?:please\s+)?(?:submit|upload|attach|include|create|produce|prepare|provide|present|record|hand in|turn in|write|complete|deliver|bring|send|build)\b/i;
 const listItemPattern = /^\s*(?:[•*–—-]\s+|\d+[.)]\s+)/;
 const tidyLine = (value) => value.trim().replace(listItemPattern, "").trim();
@@ -52,19 +54,43 @@ function abbreviated(value, length = 200) {
   return value.length > length ? `${value.slice(0, length - 1).trimEnd()}…` : value;
 }
 
-function splitDeadlineClauses(line) {
+function datedDeadlineClauses(line) {
   const clauses = [];
-  let depth = 0, start = 0;
-  for (const match of line.matchAll(deadlineClauseToken)) {
-    const [token] = match;
-    if (token === "(") depth++;
-    else if (token === ")") depth = Math.max(0, depth - 1);
-    else if (depth === 0) {
-      clauses.push(line.slice(start, match.index));
-      start = match.index + token.length;
+  let depth = 0, start = 0, noteStart = 0, notes = [];
+  const addClause = (end) => {
+    const source = line.slice(start, end);
+    const main = notes.reduceRight((text, note) =>
+      `${text.slice(0, note.start - start).trimEnd()} ${text.slice(note.end - start).trimStart()}`, source).trim();
+    const mainDates = main.match(datePattern);
+    if (notes.length && mainDates) {
+      clauses.push({ source: main, dates: mainDates });
+      for (const note of notes) {
+        const inheritsOptional = optionalDeadlinePattern.test(main) && !finalDeadlinePattern.test(note.source);
+        clauses.push({ source: inheritsOptional ? source : note.source, dates: note.dates });
+      }
+    } else {
+      const dates = notes.length ? source.match(datePattern) : mainDates;
+      if (dates) clauses.push({ source, dates });
+    }
+    notes = [];
+  };
+  for (const { 0: token, index } of line.matchAll(deadlineClauseToken)) {
+    if (token === "(") {
+      if (depth++ === 0) noteStart = index;
+    } else if (token === ")") {
+      if (depth && --depth === 0) {
+        const source = line.slice(noteStart + 1, index);
+        const dates = source.match(datePattern);
+        if (dates) notes.push({ start: noteStart, end: index + 1, source, dates });
+      }
+    } else if (depth === 0) {
+      addClause(index);
+      start = index + token.length;
     }
   }
-  return [...clauses, line.slice(start)];
+  addClause(line.length);
+  if (clauses.length === 1) clauses[0].source = line;
+  return clauses;
 }
 
 function buildPlan(start, target, checkpoint) {
@@ -120,12 +146,8 @@ export function analyzeBrief(input, start = isoDay(new Date())) {
       }
     }
     if (section === "deadlines" || hasDeadlineCue(line)) {
-      const datedClauses = splitDeadlineClauses(line).map((clause) => ({
-        clause, matches: [...clause.matchAll(datePattern)],
-      })).filter(({ matches }) => matches.length);
-      for (const { clause, matches } of datedClauses) {
-        const source = datedClauses.length > 1 ? clause : line;
-        for (const [raw] of matches) {
+      for (const { source, dates } of datedDeadlineClauses(line)) {
+        for (const raw of dates) {
           const parsed = readDate(raw, start, dateOrder);
           deadlines.push({ source, raw, ...parsed });
           if (!parsed.date) flags.push({ title: parsed.ambiguous ? "Ambiguous date format" : "Unrecognized date", detail: source });
@@ -138,8 +160,8 @@ export function analyzeBrief(input, start = isoDay(new Date())) {
     }
   }
   const dated = deadlines.filter(({ date }) => date).sort((a, b) => a.date.localeCompare(b.date));
-  const hard = dated.filter(({ source }) => !/\b(?:draft|checkpoint|optional)\b/i.test(source));
-  const finalDates = new Set(hard.filter(({ source }) => /\bfinal\b/i.test(source)).map(({ date }) => date));
+  const hard = dated.filter(({ source }) => !optionalDeadlinePattern.test(source));
+  const finalDates = new Set(hard.filter(({ source }) => finalDeadlinePattern.test(source)).map(({ date }) => date));
   if (finalDates.size > 1) flags.push({ title: "Possible deadline conflict", detail: "The brief lists different dates for final work. Confirm which date applies before submitting." });
   if (!dated.length) flags.push({ title: "No confirmed deadline found", detail: "Check the course portal or ask your instructor for the deadline." });
   if (dated[0]?.date < start) flags.push({ title: "A deadline is before your start date", detail: dated[0].source });
