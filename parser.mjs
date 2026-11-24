@@ -116,6 +116,7 @@ export function analyzeBrief(input, start = isoDay(new Date())) {
   const dateOrder = /\bDD\/MM\/YYYY\b/i.test(input) ? "dmy" : /\bMM\/DD\/YYYY\b/i.test(input) ? "mdy" : null;
   let section = "";
   let deadlineHeadingLevel;
+  let optionalHeadingLevel = 0;
   for (const [index, line] of lines.entries()) {
     if (!line) continue;
     const heading = headingText(line);
@@ -131,6 +132,7 @@ export function analyzeBrief(input, start = isoDay(new Date())) {
     if (/^(?:key dates|dates|deadlines)\s*:?$/i.test(heading)) {
       section = "deadlines";
       deadlineHeadingLevel = headingLevel ?? 2;
+      optionalHeadingLevel = 0;
       continue;
     }
     if (/^(?:requirements|notes)\s*:?$/i.test(heading) ||
@@ -138,7 +140,13 @@ export function analyzeBrief(input, start = isoDay(new Date())) {
       section = "";
       continue;
     }
-    if (section === "deadlines" && headingLevel && headingLevel <= deadlineHeadingLevel) section = "";
+    if (section === "deadlines" && headingLevel) {
+      if (headingLevel <= deadlineHeadingLevel) section = "";
+      if (headingLevel <= optionalHeadingLevel) optionalHeadingLevel = 0;
+      if (section === "deadlines" && !optionalHeadingLevel && optionalDeadlinePattern.test(heading.split("(", 1)[0])) {
+        optionalHeadingLevel = headingLevel;
+      }
+    }
     const criterion = readRubric(line);
     if (criterion && (section === "rubric" || !actionPattern.test(line))) rubric.push(criterion);
     if (section === "deliverables" && deliverables.length && hasDeadlineCue(line) &&
@@ -152,9 +160,10 @@ export function analyzeBrief(input, start = isoDay(new Date())) {
     }
     if (section === "deadlines" || hasDeadlineCue(heading)) {
       for (const { source, dates } of datedDeadlineClauses(heading)) {
+        const optional = optionalDeadlinePattern.test(source) || (section === "deadlines" && optionalHeadingLevel > 0);
         for (const raw of dates) {
           const parsed = readDate(raw, start, dateOrder);
-          deadlines.push({ source, raw, ...parsed });
+          deadlines.push({ source, raw, optional, ...parsed });
           if (!parsed.date) flags.push({ title: parsed.ambiguous ? "Ambiguous date format" : "Unrecognized date", detail: source });
           if (parsed.assumedYear) flags.push({ title: "Year inferred from your start date", detail: source });
         }
@@ -165,7 +174,7 @@ export function analyzeBrief(input, start = isoDay(new Date())) {
     }
   }
   const dated = deadlines.filter(({ date }) => date).sort((a, b) => a.date.localeCompare(b.date));
-  const hard = dated.filter(({ source }) => !optionalDeadlinePattern.test(source));
+  const hard = dated.filter(({ optional }) => !optional);
   const finalDates = new Set(hard.filter(({ source }) => finalDeadlinePattern.test(source)).map(({ date }) => date));
   if (finalDates.size > 1) flags.push({ title: "Possible deadline conflict", detail: "The brief lists different dates for final work. Confirm which date applies before submitting." });
   if (!dated.length) flags.push({ title: "No confirmed deadline found", detail: "Check the course portal or ask your instructor for the deadline." });

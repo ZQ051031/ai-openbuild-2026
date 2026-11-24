@@ -114,6 +114,14 @@ test("nested Markdown headings and their rows retain deadline context", () => {
   }
 });
 
+test("dates inherit optional draft context until the next peer heading", () => {
+  const result = analyzeBrief("Deadlines\n### Optional draft\n1 December\n#### Feedback\n4 December\n### Final report\n8 December", "2026-11-24");
+  assert.deepEqual(result.deadlines.map(({ date, optional }) => [date, optional]), [
+    ["2026-12-01", true], ["2026-12-04", true], ["2026-12-08", false],
+  ]);
+  assert.equal(result.plan.at(-1).date, "2026-12-08");
+});
+
 test("parenthesized feedback dates retain their optional draft context", () => {
   for (const note of ["feedback by 4 December", "comments are optional; feedback by 4 December"]) {
     const result = analyzeBrief(`Deadlines\nOptional draft 1 December (${note})\nFinal report: 8 December 2026`, "2026-11-24");
