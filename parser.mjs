@@ -10,6 +10,8 @@ const hasDeadlineCue = (line) => duePattern.test(line) || byDatePattern.test(lin
 const deadlineClauseToken = /[()]|\s*;\s*|(?<=[.!?])\s+|(?:,\s*(?:and\s+)?|\s+and\s+)(?=(?:the\s+)?(?:draft|final|checkpoint)\b)/gi;
 const optionalDeadlinePattern = /\b(?:draft|checkpoint|optional)\b/i;
 const finalDeadlinePattern = /\bfinal\b/i;
+const deadlineWorkWords = (text) => (text.toLowerCase().match(/\b[a-z]+\b/g) ?? [])
+  .filter((word) => !/^(?:a|an|the|optional|draft|checkpoint|submissions?|dates?|at|on)$/.test(word));
 const actionPattern = /^(?:please\s+)?(?:submit|upload|attach|include|create|produce|prepare|provide|present|record|hand in|turn in|write|complete|deliver|bring|send|build)\b/i;
 const listItemPattern = /^\s*(?:[•*–—-]\s+|\d+[.)]\s+)/;
 const tidyLine = (value) => value.trim().replace(listItemPattern, "").trim();
@@ -116,7 +118,7 @@ export function analyzeBrief(input, start = isoDay(new Date())) {
   const dateOrder = /\bDD\/MM\/YYYY\b/i.test(input) ? "dmy" : /\bMM\/DD\/YYYY\b/i.test(input) ? "mdy" : null;
   let section = "";
   let deadlineHeadingLevel;
-  let optionalHeadingLevel = 0;
+  let optionalHeading;
   for (const [index, line] of lines.entries()) {
     if (!line) continue;
     const heading = headingText(line);
@@ -132,7 +134,7 @@ export function analyzeBrief(input, start = isoDay(new Date())) {
     if (/^(?:key dates|dates|deadlines)\s*:?$/i.test(heading)) {
       section = "deadlines";
       deadlineHeadingLevel = headingLevel ?? 2;
-      optionalHeadingLevel = 0;
+      optionalHeading = undefined;
       continue;
     }
     if (/^(?:requirements|notes)\s*:?$/i.test(heading) ||
@@ -142,11 +144,11 @@ export function analyzeBrief(input, start = isoDay(new Date())) {
     }
     if (section === "deadlines" && headingLevel) {
       if (headingLevel <= deadlineHeadingLevel) section = "";
-      if (headingLevel <= optionalHeadingLevel) optionalHeadingLevel = 0;
+      if (optionalHeading && headingLevel <= optionalHeading.level) optionalHeading = undefined;
       const title = heading.split("(", 1)[0];
-      if (section === "deadlines" && !optionalHeadingLevel &&
-          optionalDeadlinePattern.test(title) && !/\b(?:final|submissions?)\b/i.test(title)) {
-        optionalHeadingLevel = headingLevel;
+      if (section === "deadlines" && !optionalHeading && optionalDeadlinePattern.test(title) &&
+          !finalDeadlinePattern.test(title) && !/\band\s+(?:the\s+)?submissions?\b/i.test(title)) {
+        optionalHeading = { level: headingLevel, work: deadlineWorkWords(title) };
       }
     }
     const criterion = readRubric(line);
@@ -162,9 +164,12 @@ export function analyzeBrief(input, start = isoDay(new Date())) {
     }
     if (section === "deadlines" || hasDeadlineCue(heading)) {
       for (const { source, dates } of datedDeadlineClauses(heading)) {
-        const inheritsOptional = section === "deadlines" && optionalHeadingLevel > 0 &&
-          !finalDeadlinePattern.test(source) && !/\bdue\b/i.test(source);
-        const optional = optionalDeadlinePattern.test(source) || inheritsOptional;
+        let optional = optionalDeadlinePattern.test(source);
+        if (!optional && section === "deadlines" && optionalHeading && !finalDeadlinePattern.test(source)) {
+          const label = source.slice(0, source.indexOf(dates[0])).split(/\b(?:due|by|deadline)\b/i, 1)[0];
+          const work = deadlineWorkWords(label);
+          optional = !work.length || work.some((word) => optionalHeading.work.includes(word));
+        }
         for (const raw of dates) {
           const parsed = readDate(raw, start, dateOrder);
           deadlines.push({ source, raw, optional, ...parsed });

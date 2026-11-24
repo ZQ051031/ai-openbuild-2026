@@ -142,6 +142,18 @@ test("explicit final or due wording overrides an inherited optional qualifier", 
   }
 });
 
+test("a heading for an optional draft submission keeps its dates optional", () => {
+  const result = analyzeBrief("Deadlines\n### Optional draft submission\n1 December\n### Final report\n8 December", "2026-11-24");
+  assert.deepEqual(result.deadlines.map(({ optional }) => optional), [true, false]);
+  assert.equal(result.plan.at(-1).date, "2026-12-08");
+});
+
+test("bare due wording and the same named work keep the heading's optional qualifier", () => {
+  const result = analyzeBrief("Deadlines\n### Optional draft\nDue: 1 December\n### Optional draft report\nReport due 4 December\nSlides due 8 December", "2026-11-24");
+  assert.deepEqual(result.deadlines.map(({ optional }) => optional), [true, true, false]);
+  assert.equal(result.plan.at(-1).date, "2026-12-08");
+});
+
 test("parenthesized feedback dates retain their optional draft context", () => {
   for (const note of ["feedback by 4 December", "comments are optional; feedback by 4 December"]) {
     const result = analyzeBrief(`Deadlines\nOptional draft 1 December (${note})\nFinal report: 8 December 2026`, "2026-11-24");
