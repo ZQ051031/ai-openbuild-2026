@@ -52,3 +52,9 @@ test("deadline sections supply context for dates without a deadline keyword", ()
   assert.equal(result.plan.at(-1).date, "2026-12-08");
   assert.equal(result.tentativePlan, false);
 });
+
+test("a dated hand-in remains part of the deliverables block", () => {
+  const result = analyzeBrief("Deliverables\n- Report PDF by 8 December\n- Upload your slides\n\nFinal submission due 9 December 2026", "2026-11-24");
+  assert.deepEqual(result.deliverables, ["Report PDF by 8 December", "Upload your slides"]);
+  assert.deepEqual(result.deadlines.map(({ date }) => date), ["2026-12-08", "2026-12-09"]);
+});

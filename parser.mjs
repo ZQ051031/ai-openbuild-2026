@@ -60,14 +60,15 @@ function buildPlan(start, target, checkpoint) {
 }
 
 export function analyzeBrief(input, start = isoDay(new Date())) {
-  const lines = input.split(/\r?\n/).map(tidyLine).filter(Boolean);
-  if (!lines.length) return null;
+  const lines = input.split(/\r?\n/).map(tidyLine);
+  if (!lines.some(Boolean)) return null;
   const deliverables = [], deadlines = [], rubric = [], flags = [];
   const deliverablesHeading = /^(?:what to hand in|deliverables|submission requirements)\s*:?$/i;
   const hasDeliverablesSection = lines.some((line) => deliverablesHeading.test(line));
   const dateOrder = /\bDD\/MM\/YYYY\b/i.test(input) ? "dmy" : /\bMM\/DD\/YYYY\b/i.test(input) ? "mdy" : null;
   let section = "";
-  for (const line of lines) {
+  for (const [index, line] of lines.entries()) {
+    if (!line) continue;
     if (deliverablesHeading.test(line)) {
       section = "deliverables";
       continue;
@@ -86,7 +87,8 @@ export function analyzeBrief(input, start = isoDay(new Date())) {
     }
     const criterion = readRubric(line);
     if (criterion && (section === "rubric" || !actionPattern.test(line))) rubric.push(criterion);
-    if (section === "deliverables" && hasDeadlineCue(line) && !actionPattern.test(line)) section = "";
+    if (section === "deliverables" && deliverables.length && lines[index - 1] === "" &&
+        hasDeadlineCue(line) && !actionPattern.test(line)) section = "";
     if ((section === "deliverables" && (actionPattern.test(line) || (line.length < 160 && !criterion))) ||
         (!hasDeliverablesSection && actionPattern.test(line))) {
       for (const sentence of line.split(/(?<=[.!?])\s+(?=(?:submit|upload|attach|include|create|present|record|write|complete|build)\b)/i)) {
@@ -123,7 +125,7 @@ export function analyzeBrief(input, start = isoDay(new Date())) {
   const target = primaryDeadline?.date ?? offsetDay(start, 7);
   const plan = target >= start ? buildPlan(start, target, checkpoint) : [];
   const highest = rubric.reduce((best, item) => !best || item.weight > best.weight ? item : best, null);
-  const purpose = lines.find((line, index) => index < 4 && /[.!?]$/.test(line) && !hasDeadlineCue(line) && !readRubric(line));
+  const purpose = lines.filter(Boolean).slice(0, 4).find((line) => /[.!?]$/.test(line) && !hasDeadlineCue(line) && !readRubric(line));
   const summary = [
     purpose && abbreviated(purpose, 280),
     deliverables.length ? `What to hand in: ${deliverables.slice(0, 2).map((item) => abbreviated(item)).join(" ")}` : "No explicit hand-in instructions were found.",
