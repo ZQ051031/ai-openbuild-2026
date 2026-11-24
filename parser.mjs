@@ -7,7 +7,7 @@ const weekdayPattern = "(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sun
 const clockPattern = "(?:\\d{1,2}:\\d{2}(?:\\s*[ap]m)?|\\d{1,2}\\s*[ap]m|noon|midnight)";
 const byDatePattern = new RegExp(`\\bby\\s+(?:${weekdayPattern}(?:,\\s*|\\s+))?(?:(?:at\\s+)?${clockPattern}(?:,\\s*|\\s+(?:on\\s+)?))?(?=${datePattern.source})`, "i");
 const hasDeadlineCue = (line) => duePattern.test(line) || byDatePattern.test(line);
-const deadlineClauseBoundary = /\s*;\s*|(?<=[.!?])\s+|(?:,\s*(?:and\s+)?|\s+and\s+)(?=(?:the\s+)?(?:draft|final|checkpoint)\b)/i;
+const deadlineClauseToken = /[()]|\s*;\s*|(?<=[.!?])\s+|(?:,\s*(?:and\s+)?|\s+and\s+)(?=(?:the\s+)?(?:draft|final|checkpoint)\b)/gi;
 const actionPattern = /^(?:please\s+)?(?:submit|upload|attach|include|create|produce|prepare|provide|present|record|hand in|turn in|write|complete|deliver|bring|send|build)\b/i;
 const tidyLine = (value) => value.trim().replace(/^\s*(?:[•*–—-]\s+|\d+[.)]\s+)/, "").trim();
 const headingText = (line) => line.replace(/^#{1,6}\s+/, "");
@@ -49,6 +49,21 @@ function readRubric(line) {
 
 function abbreviated(value, length = 200) {
   return value.length > length ? `${value.slice(0, length - 1).trimEnd()}…` : value;
+}
+
+function splitDeadlineClauses(line) {
+  const clauses = [];
+  let depth = 0, start = 0;
+  for (const match of line.matchAll(deadlineClauseToken)) {
+    const [token] = match;
+    if (token === "(") depth++;
+    else if (token === ")") depth = Math.max(0, depth - 1);
+    else if (depth === 0) {
+      clauses.push(line.slice(start, match.index));
+      start = match.index + token.length;
+    }
+  }
+  return [...clauses, line.slice(start)];
 }
 
 function buildPlan(start, target, checkpoint) {
@@ -102,7 +117,7 @@ export function analyzeBrief(input, start = isoDay(new Date())) {
       }
     }
     if (section === "deadlines" || hasDeadlineCue(line)) {
-      const datedClauses = line.split(deadlineClauseBoundary).map((clause) => ({
+      const datedClauses = splitDeadlineClauses(line).map((clause) => ({
         clause, matches: [...clause.matchAll(datePattern)],
       })).filter(({ matches }) => matches.length);
       for (const { clause, matches } of datedClauses) {

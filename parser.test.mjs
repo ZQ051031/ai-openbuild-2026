@@ -87,3 +87,12 @@ test("background and marked headings end deadline context", () => {
     assert.equal(result.plan.at(-1).date, "2026-12-08");
   }
 });
+
+test("parenthesized feedback dates retain their optional draft context", () => {
+  for (const note of ["feedback by 4 December", "comments are optional; feedback by 4 December"]) {
+    const result = analyzeBrief(`Deadlines\nOptional draft 1 December (${note})\nFinal report: 8 December 2026`, "2026-11-24");
+    assert.deepEqual(result.deadlines.map(({ date }) => date), ["2026-12-01", "2026-12-04", "2026-12-08"]);
+    assert.match(result.deadlines[1].source, /optional draft/i);
+    assert.equal(result.plan.at(-1).date, "2026-12-08");
+  }
+});
