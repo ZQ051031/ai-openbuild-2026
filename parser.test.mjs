@@ -80,6 +80,14 @@ test("a weekday or time can come between by and a calendar date", () => {
   }
 });
 
+test("clock minutes cannot start a day-first date", () => {
+  for (const line of ["Report due 5:30 December 4", "Submit your report by 17:30 December 4"]) {
+    const result = analyzeBrief(line, "2026-11-24");
+    assert.deepEqual(result.deadlines.map(({ raw, date }) => [raw, date]), [["December 4", "2026-12-04"]]);
+    assert.equal(result.plan.at(-1).date, "2026-12-04");
+  }
+});
+
 test("background and marked headings end deadline context", () => {
   for (const heading of ["Background", "Overview:", "## Dataset history"]) {
     const result = analyzeBrief(`Deadlines\nFinal report: 8 December 2026\n${heading}\nDataset released 20 November 2026`, "2026-11-24");

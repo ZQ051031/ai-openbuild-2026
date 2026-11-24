@@ -1,7 +1,7 @@
 const DAY = 86_400_000;
 const months = "jan feb mar apr may jun jul aug sep oct nov dec".split(" ");
 const monthPattern = "(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)";
-const datePattern = new RegExp(`\\b(?:\\d{4}-\\d{2}-\\d{2}|\\d{1,2}[/.-]\\d{1,2}[/.-]\\d{4}|\\d{1,2}(?:st|nd|rd|th)?\\s+${monthPattern}(?:\\s+\\d{4})?|${monthPattern}\\s+\\d{1,2}(?:st|nd|rd|th)?(?:,?\\s+\\d{4})?|(?:in|within)\\s+\\d+\\s+(?:days?|weeks?)|today|tomorrow)\\b`, "gi");
+const datePattern = new RegExp(`\\b(?:\\d{4}-\\d{2}-\\d{2}|\\d{1,2}[/.-]\\d{1,2}[/.-]\\d{4}|(?<!\\d:)\\d{1,2}(?:st|nd|rd|th)?\\s+${monthPattern}(?:\\s+\\d{4})?|${monthPattern}\\s+\\d{1,2}(?:st|nd|rd|th)?(?:,?\\s+\\d{4})?|(?:in|within)\\s+\\d+\\s+(?:days?|weeks?)|today|tomorrow)\\b`, "gi");
 const duePattern = /\b(?:due|deadline|checkpoint|cut-?off|no later than|final\s+submission)\b/i;
 const weekdayPattern = "(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)";
 const clockPattern = "(?:\\d{1,2}:\\d{2}(?:\\s*[ap]m)?|\\d{1,2}\\s*[ap]m|noon|midnight)";
