@@ -147,7 +147,7 @@ export function analyzeBrief(input, start = isoDay(new Date())) {
       if (optionalHeading && headingLevel <= optionalHeading.level) optionalHeading = undefined;
       const title = heading.split("(", 1)[0];
       if (section === "deadlines" && !optionalHeading && optionalDeadlinePattern.test(title) &&
-          !finalDeadlinePattern.test(title) && !/\band\s+(?:the\s+)?submissions?\b/i.test(title)) {
+          !finalDeadlinePattern.test(title) && !/(?:\band\s+|[&+/]\s*)(?:the\s+)?submissions?\b/i.test(title)) {
         optionalHeading = { level: headingLevel, work: deadlineWorkWords(title) };
       }
     }

@@ -134,6 +134,14 @@ test("headings that also name final work or submission do not make dates optiona
   }
 });
 
+test("symbolic separators mark a draft and submission heading as mixed", () => {
+  for (const separator of ["&", "+", "/"]) {
+    const result = analyzeBrief(`Deadlines\n### Draft ${separator} submission\nDraft due 1 December\n8 December`, "2026-11-24");
+    assert.deepEqual(result.deadlines.map(({ optional }) => optional), [true, false]);
+    assert.equal(result.plan.at(-1).date, "2026-12-08");
+  }
+});
+
 test("explicit final or due wording overrides an inherited optional qualifier", () => {
   for (const deadline of ["Final report: 8 December", "Report due 8 December"]) {
     const result = analyzeBrief(`Deadlines\n### Optional draft\n1 December\nDraft due 4 December\n${deadline}`, "2026-11-24");
