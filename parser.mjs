@@ -5,6 +5,7 @@ const datePattern = new RegExp(`\\b(?:\\d{4}-\\d{2}-\\d{2}|\\d{1,2}[/.-]\\d{1,2}
 const duePattern = /\b(?:due|deadline|checkpoint|cut-?off|no later than|final\s+submission)\b/i;
 const byDatePattern = new RegExp(`\\bby\\s+(?=${datePattern.source})`, "i");
 const hasDeadlineCue = (line) => duePattern.test(line) || byDatePattern.test(line);
+const deadlineClauseBoundary = /\s*;\s*|(?<=[.!?])\s+|(?:,\s*(?:and\s+)?|\s+and\s+)(?=(?:the\s+)?(?:draft|final|checkpoint)\b)/i;
 const actionPattern = /^(?:please\s+)?(?:submit|upload|attach|include|create|produce|prepare|provide|present|record|hand in|turn in|write|complete|deliver|bring|send|build)\b/i;
 const tidyLine = (value) => value.trim().replace(/^\s*(?:[•*–—-]\s+|\d+[.)]\s+)/, "").trim();
 export const isoDay = (value) => value.toISOString().slice(0, 10);
@@ -96,12 +97,17 @@ export function analyzeBrief(input, start = isoDay(new Date())) {
       }
     }
     if (section === "deadlines" || hasDeadlineCue(line)) {
-      for (const match of line.matchAll(datePattern)) {
-        const raw = match[0];
-        const parsed = readDate(raw, start, dateOrder);
-        deadlines.push({ source: line, raw, ...parsed });
-        if (!parsed.date) flags.push({ title: parsed.ambiguous ? "Ambiguous date format" : "Unrecognized date", detail: line });
-        if (parsed.assumedYear) flags.push({ title: "Year inferred from your start date", detail: line });
+      const datedClauses = line.split(deadlineClauseBoundary).map((clause) => ({
+        clause, matches: [...clause.matchAll(datePattern)],
+      })).filter(({ matches }) => matches.length);
+      for (const { clause, matches } of datedClauses) {
+        const source = datedClauses.length > 1 ? clause : line;
+        for (const [raw] of matches) {
+          const parsed = readDate(raw, start, dateOrder);
+          deadlines.push({ source, raw, ...parsed });
+          if (!parsed.date) flags.push({ title: parsed.ambiguous ? "Ambiguous date format" : "Unrecognized date", detail: source });
+          if (parsed.assumedYear) flags.push({ title: "Year inferred from your start date", detail: source });
+        }
       }
     }
     if (/\b(?:TBC|TBD|to be confirmed|appropriate|roughly|as needed|suitable|sufficient|approximately|where possible)\b/i.test(line)) {

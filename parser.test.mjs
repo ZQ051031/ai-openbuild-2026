@@ -58,3 +58,16 @@ test("a dated hand-in remains part of the deliverables block", () => {
   assert.deepEqual(result.deliverables, ["Report PDF by 8 December", "Upload your slides"]);
   assert.deepEqual(result.deadlines.map(({ date }) => date), ["2026-12-08", "2026-12-09"]);
 });
+
+test("draft and final deadlines on the same line keep distinct contexts", () => {
+  for (const line of [
+    "Draft due 1 December 2026; final due 8 December 2026",
+    "Draft due December 1, 2026, and the final due December 8, 2026",
+  ]) {
+    const result = analyzeBrief(line, "2026-11-24");
+    assert.deepEqual(result.deadlines.map(({ date }) => date), ["2026-12-01", "2026-12-08"]);
+    assert.doesNotMatch(result.deadlines[1].source, /draft/i);
+    assert.equal(result.plan.at(-1).date, "2026-12-08");
+    assert.match(result.summary, /key deadline: (?:the )?final/i);
+  }
+});
