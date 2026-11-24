@@ -10,8 +10,9 @@ const hasDeadlineCue = (line) => duePattern.test(line) || byDatePattern.test(lin
 const deadlineClauseToken = /[()]|\s*;\s*|(?<=[.!?])\s+|(?:,\s*(?:and\s+)?|\s+and\s+)(?=(?:the\s+)?(?:draft|final|checkpoint)\b)/gi;
 const optionalDeadlinePattern = /\b(?:draft|checkpoint|optional)\b/i;
 const finalDeadlinePattern = /\bfinal\b/i;
+const dateLabelWordPattern = new RegExp(`^(?:${weekdayPattern}|${monthPattern}|dates?|times?|at|on|am|pm|noon|midnight)$`, "i");
 const deadlineWorkWords = (text) => (text.toLowerCase().match(/\b[a-z]+\b/g) ?? [])
-  .filter((word) => !/^(?:a|an|the|optional|draft|checkpoint|submissions?|dates?|at|on)$/.test(word));
+  .filter((word) => !dateLabelWordPattern.test(word) && !/^(?:a|an|the|optional|draft|checkpoint|submissions?)$/.test(word));
 const actionPattern = /^(?:please\s+)?(?:submit|upload|attach|include|create|produce|prepare|provide|present|record|hand in|turn in|write|complete|deliver|bring|send|build)\b/i;
 const listItemPattern = /^\s*(?:[•*–—-]\s+|\d+[.)]\s+)/;
 const tidyLine = (value) => value.trim().replace(listItemPattern, "").trim();

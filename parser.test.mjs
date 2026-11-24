@@ -162,6 +162,17 @@ test("bare due wording and the same named work keep the heading's optional quali
   assert.equal(result.plan.at(-1).date, "2026-12-08");
 });
 
+test("calendar and time wording does not count as distinct or matching work", () => {
+  const result = analyzeBrief([
+    "Deadlines", "### Optional draft — December", "Tuesday, 1 December",
+    "On Friday at 5 pm, 4 December", "December slides: 8 December",
+  ].join("\n"), "2026-11-24");
+  assert.deepEqual(result.deadlines.map(({ date, optional }) => [date, optional]), [
+    ["2026-12-01", true], ["2026-12-04", true], ["2026-12-08", false],
+  ]);
+  assert.equal(result.plan.at(-1).date, "2026-12-08");
+});
+
 test("parenthesized feedback dates retain their optional draft context", () => {
   for (const note of ["feedback by 4 December", "comments are optional; feedback by 4 December"]) {
     const result = analyzeBrief(`Deadlines\nOptional draft 1 December (${note})\nFinal report: 8 December 2026`, "2026-11-24");
