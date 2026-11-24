@@ -71,3 +71,11 @@ test("draft and final deadlines on the same line keep distinct contexts", () => 
     assert.match(result.summary, /key deadline: (?:the )?final/i);
   }
 });
+
+test("a weekday or time can come between by and a calendar date", () => {
+  for (const due of ["Friday 5pm, 12 December", "Friday, 12 December", "5 pm on 12 December"]) {
+    const result = analyzeBrief(`Submit the essay by ${due}`, "2026-11-24");
+    assert.deepEqual(result.deadlines.map(({ date }) => date), ["2026-12-12"]);
+    assert.equal(result.plan.at(-1).date, "2026-12-12");
+  }
+});
