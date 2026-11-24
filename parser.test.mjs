@@ -88,6 +88,12 @@ test("clock minutes cannot start a day-first date", () => {
   }
 });
 
+test("a single-digit day after a numbered label is not a clock minute", () => {
+  const result = analyzeBrief("Deadlines\nPhase 1:8 December", "2026-11-24");
+  assert.deepEqual(result.deadlines.map(({ raw, date }) => [raw, date]), [["8 December", "2026-12-08"]]);
+  assert.equal(result.plan.at(-1).date, "2026-12-08");
+});
+
 test("background and marked headings end deadline context", () => {
   for (const heading of ["Background", "Overview:", "## Dataset history"]) {
     const result = analyzeBrief(`Deadlines\nFinal report: 8 December 2026\n${heading}\nDataset released 20 November 2026`, "2026-11-24");
