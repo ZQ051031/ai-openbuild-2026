@@ -13,7 +13,8 @@ const finalDeadlinePattern = /\bfinal\b/i;
 const actionPattern = /^(?:please\s+)?(?:submit|upload|attach|include|create|produce|prepare|provide|present|record|hand in|turn in|write|complete|deliver|bring|send|build)\b/i;
 const listItemPattern = /^\s*(?:[•*–—-]\s+|\d+[.)]\s+)/;
 const tidyLine = (value) => value.trim().replace(listItemPattern, "").trim();
-const headingText = (line) => line.replace(/^#{1,6}\s+/, "");
+const markdownHeadingPattern = /^(#{1,6})\s+/;
+const headingText = (line) => line.replace(markdownHeadingPattern, "");
 export const isoDay = (value) => value.toISOString().slice(0, 10);
 const offsetDay = (date, days) => isoDay(new Date(Date.parse(date) + days * DAY));
 
@@ -114,9 +115,11 @@ export function analyzeBrief(input, start = isoDay(new Date())) {
   const hasDeliverablesSection = lines.some((line) => deliverablesHeading.test(headingText(line)));
   const dateOrder = /\bDD\/MM\/YYYY\b/i.test(input) ? "dmy" : /\bMM\/DD\/YYYY\b/i.test(input) ? "mdy" : null;
   let section = "";
+  let deadlineHeadingLevel;
   for (const [index, line] of lines.entries()) {
     if (!line) continue;
     const heading = headingText(line);
+    const headingLevel = line.match(markdownHeadingPattern)?.[1].length;
     if (deliverablesHeading.test(heading)) {
       section = "deliverables";
       continue;
@@ -127,13 +130,15 @@ export function analyzeBrief(input, start = isoDay(new Date())) {
     }
     if (/^(?:key dates|dates|deadlines)\s*:?$/i.test(heading)) {
       section = "deadlines";
+      deadlineHeadingLevel = headingLevel ?? 2;
       continue;
     }
     if (/^(?:requirements|notes)\s*:?$/i.test(heading) ||
-        (section === "deadlines" && (heading !== line || /^(?:background|context|overview|introduction)\s*:?$/i.test(heading)))) {
+        (section === "deadlines" && /^(?:background|context|overview|introduction)\s*:?$/i.test(heading))) {
       section = "";
       continue;
     }
+    if (section === "deadlines" && headingLevel && headingLevel <= deadlineHeadingLevel) section = "";
     const criterion = readRubric(line);
     if (criterion && (section === "rubric" || !actionPattern.test(line))) rubric.push(criterion);
     if (section === "deliverables" && deliverables.length && hasDeadlineCue(line) &&
@@ -145,8 +150,8 @@ export function analyzeBrief(input, start = isoDay(new Date())) {
         if (!deliverables.includes(sentence)) deliverables.push(sentence);
       }
     }
-    if (section === "deadlines" || hasDeadlineCue(line)) {
-      for (const { source, dates } of datedDeadlineClauses(line)) {
+    if (section === "deadlines" || hasDeadlineCue(heading)) {
+      for (const { source, dates } of datedDeadlineClauses(heading)) {
         for (const raw of dates) {
           const parsed = readDate(raw, start, dateOrder);
           deadlines.push({ source, raw, ...parsed });
