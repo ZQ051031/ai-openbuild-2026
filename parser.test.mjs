@@ -122,6 +122,26 @@ test("dates inherit optional draft context until the next peer heading", () => {
   assert.equal(result.plan.at(-1).date, "2026-12-08");
 });
 
+test("headings that also name final work or submission do not make dates optional", () => {
+  for (const [heading, deadline] of [
+    ["Draft and final report", "Final report due 8 December"],
+    ["Draft and final report", "8 December"],
+    ["Draft and submission", "8 December"],
+  ]) {
+    const result = analyzeBrief(`Deadlines\n### ${heading}\nDraft due 1 December\n${deadline}`, "2026-11-24");
+    assert.deepEqual(result.deadlines.map(({ optional }) => optional), [true, false]);
+    assert.equal(result.plan.at(-1).date, "2026-12-08");
+  }
+});
+
+test("explicit final or due wording overrides an inherited optional qualifier", () => {
+  for (const deadline of ["Final report: 8 December", "Report due 8 December"]) {
+    const result = analyzeBrief(`Deadlines\n### Optional draft\n1 December\nDraft due 4 December\n${deadline}`, "2026-11-24");
+    assert.deepEqual(result.deadlines.map(({ optional }) => optional), [true, true, false]);
+    assert.equal(result.plan.at(-1).date, "2026-12-08");
+  }
+});
+
 test("parenthesized feedback dates retain their optional draft context", () => {
   for (const note of ["feedback by 4 December", "comments are optional; feedback by 4 December"]) {
     const result = analyzeBrief(`Deadlines\nOptional draft 1 December (${note})\nFinal report: 8 December 2026`, "2026-11-24");

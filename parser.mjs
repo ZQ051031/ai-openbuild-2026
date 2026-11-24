@@ -143,7 +143,9 @@ export function analyzeBrief(input, start = isoDay(new Date())) {
     if (section === "deadlines" && headingLevel) {
       if (headingLevel <= deadlineHeadingLevel) section = "";
       if (headingLevel <= optionalHeadingLevel) optionalHeadingLevel = 0;
-      if (section === "deadlines" && !optionalHeadingLevel && optionalDeadlinePattern.test(heading.split("(", 1)[0])) {
+      const title = heading.split("(", 1)[0];
+      if (section === "deadlines" && !optionalHeadingLevel &&
+          optionalDeadlinePattern.test(title) && !/\b(?:final|submissions?)\b/i.test(title)) {
         optionalHeadingLevel = headingLevel;
       }
     }
@@ -160,7 +162,9 @@ export function analyzeBrief(input, start = isoDay(new Date())) {
     }
     if (section === "deadlines" || hasDeadlineCue(heading)) {
       for (const { source, dates } of datedDeadlineClauses(heading)) {
-        const optional = optionalDeadlinePattern.test(source) || (section === "deadlines" && optionalHeadingLevel > 0);
+        const inheritsOptional = section === "deadlines" && optionalHeadingLevel > 0 &&
+          !finalDeadlinePattern.test(source) && !/\bdue\b/i.test(source);
+        const optional = optionalDeadlinePattern.test(source) || inheritsOptional;
         for (const raw of dates) {
           const parsed = readDate(raw, start, dateOrder);
           deadlines.push({ source, raw, optional, ...parsed });
