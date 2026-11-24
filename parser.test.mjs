@@ -79,3 +79,11 @@ test("a weekday or time can come between by and a calendar date", () => {
     assert.equal(result.plan.at(-1).date, "2026-12-12");
   }
 });
+
+test("background and marked headings end deadline context", () => {
+  for (const heading of ["Background", "Overview:", "## Dataset history"]) {
+    const result = analyzeBrief(`Deadlines\nFinal report: 8 December 2026\n${heading}\nDataset released 20 November 2026`, "2026-11-24");
+    assert.deepEqual(result.deadlines.map(({ date }) => date), ["2026-12-08"]);
+    assert.equal(result.plan.at(-1).date, "2026-12-08");
+  }
+});

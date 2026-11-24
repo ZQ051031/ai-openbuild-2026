@@ -10,6 +10,7 @@ const hasDeadlineCue = (line) => duePattern.test(line) || byDatePattern.test(lin
 const deadlineClauseBoundary = /\s*;\s*|(?<=[.!?])\s+|(?:,\s*(?:and\s+)?|\s+and\s+)(?=(?:the\s+)?(?:draft|final|checkpoint)\b)/i;
 const actionPattern = /^(?:please\s+)?(?:submit|upload|attach|include|create|produce|prepare|provide|present|record|hand in|turn in|write|complete|deliver|bring|send|build)\b/i;
 const tidyLine = (value) => value.trim().replace(/^\s*(?:[•*–—-]\s+|\d+[.)]\s+)/, "").trim();
+const headingText = (line) => line.replace(/^#{1,6}\s+/, "");
 export const isoDay = (value) => value.toISOString().slice(0, 10);
 const offsetDay = (date, days) => isoDay(new Date(Date.parse(date) + days * DAY));
 
@@ -67,24 +68,26 @@ export function analyzeBrief(input, start = isoDay(new Date())) {
   if (!lines.some(Boolean)) return null;
   const deliverables = [], deadlines = [], rubric = [], flags = [];
   const deliverablesHeading = /^(?:what to hand in|deliverables|submission requirements)\s*:?$/i;
-  const hasDeliverablesSection = lines.some((line) => deliverablesHeading.test(line));
+  const hasDeliverablesSection = lines.some((line) => deliverablesHeading.test(headingText(line)));
   const dateOrder = /\bDD\/MM\/YYYY\b/i.test(input) ? "dmy" : /\bMM\/DD\/YYYY\b/i.test(input) ? "mdy" : null;
   let section = "";
   for (const [index, line] of lines.entries()) {
     if (!line) continue;
-    if (deliverablesHeading.test(line)) {
+    const heading = headingText(line);
+    if (deliverablesHeading.test(heading)) {
       section = "deliverables";
       continue;
     }
-    if (/^(?:rubric|assessment weights|grading(?: criteria)?|marking(?: criteria)?)\s*:?$/i.test(line)) {
+    if (/^(?:rubric|assessment weights|grading(?: criteria)?|marking(?: criteria)?)\s*:?$/i.test(heading)) {
       section = "rubric";
       continue;
     }
-    if (/^(?:key dates|dates|deadlines)\s*:?$/i.test(line)) {
+    if (/^(?:key dates|dates|deadlines)\s*:?$/i.test(heading)) {
       section = "deadlines";
       continue;
     }
-    if (/^(?:requirements|notes)\s*:?$/i.test(line)) {
+    if (/^(?:requirements|notes)\s*:?$/i.test(heading) ||
+        (section === "deadlines" && (heading !== line || /^(?:background|context|overview|introduction)\s*:?$/i.test(heading)))) {
       section = "";
       continue;
     }
