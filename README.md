@@ -42,6 +42,7 @@ Model input derived from the built-in [Sociology brief](./samples.mjs):
 
 - The model can omit important details: the output above leaves out both the PDF and the appendix. Use the checklist and original brief for submission requirements, not the model summary alone.
 - Ambiguous numeric dates such as `03/04/2027` are left unconfirmed unless the brief names its date order. A relative date such as “in 4 days” is measured from the start date you select, which may not be when the instructor issued the brief.
+- Parenthetical date notes, such as feedback release dates or alternate submission dates, can be misclassified; check the **Key deadlines** card against the original brief.
 - Unlabeled instructions, scanned handouts, complex tables, and unweighted rubrics can be missed. Paste readable English text; there is no file upload or OCR. A plan based on an inferred date or conflicting dates is not authoritative. If no date can be parsed, the seven-day plan is explicitly provisional.
 
 ## Screenshots
