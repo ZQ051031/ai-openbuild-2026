@@ -45,3 +45,10 @@ test("bylines do not create deadlines or override a dated hand-in", () => {
   assert.deepEqual(result.deadlines.map(({ date }) => date), ["2026-12-08"]);
   assert.equal(result.plan.at(-1).date, "2026-12-08");
 });
+
+test("deadline sections supply context for dates without a deadline keyword", () => {
+  const result = analyzeBrief("Deadlines\nFinal report: 8 December 2026\nNotes\nClass discussion: 30 November 2026", "2026-11-24");
+  assert.deepEqual(result.deadlines.map(({ date }) => date), ["2026-12-08"]);
+  assert.equal(result.plan.at(-1).date, "2026-12-08");
+  assert.equal(result.tentativePlan, false);
+});

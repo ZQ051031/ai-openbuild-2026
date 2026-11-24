@@ -76,7 +76,11 @@ export function analyzeBrief(input, start = isoDay(new Date())) {
       section = "rubric";
       continue;
     }
-    if (/^(?:key dates|dates|deadlines|requirements|notes)\s*:?$/i.test(line)) {
+    if (/^(?:key dates|dates|deadlines)\s*:?$/i.test(line)) {
+      section = "deadlines";
+      continue;
+    }
+    if (/^(?:requirements|notes)\s*:?$/i.test(line)) {
       section = "";
       continue;
     }
@@ -89,7 +93,7 @@ export function analyzeBrief(input, start = isoDay(new Date())) {
         if (!deliverables.includes(sentence)) deliverables.push(sentence);
       }
     }
-    if (hasDeadlineCue(line)) {
+    if (section === "deadlines" || hasDeadlineCue(line)) {
       for (const match of line.matchAll(datePattern)) {
         const raw = match[0];
         const parsed = readDate(raw, start, dateOrder);
