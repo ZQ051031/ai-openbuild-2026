@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Turn a dense assignment brief into a clear, actionable study plan in your browser.">
+  <meta name="theme-color" content="#f7f8f3">
+  <title>BriefBuddy — From brief to game plan</title>
+  <link rel="icon" href="./mark.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./styles.css">
+  <script type="module" src="./app.mjs"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="shell topbar-inner">
+      <a href="./" class="brand"><img src="./mark.svg" alt="" width="34" height="34">BriefBuddy</a>
+      <div class="top-links"><span class="local"><span></span> Runs in your browser</span><a href="#about">About the AI <span aria-hidden="true">↗</span></a></div>
+    </div>
+  </header>
+
+  <main class="shell">
+    <section class="hero" aria-labelledby="intro">
+      <p class="eyebrow"><span aria-hidden="true">✦</span> YOUR ASSIGNMENT COMPANION</p>
+      <h1 id="intro">From brief to <em>game plan.</em></h1>
+      <p>Turn a dense assignment brief into a clear checklist, key dates, and a study plan you can actually follow.</p>
+      <div class="hero-decoration" aria-hidden="true">
+        <svg viewBox="0 0 200 155" fill="none">
+          <path d="M40 137C6 110 44 44 92 57c51 13 29 85-2 82-34-3-12-89 32-103 24-8 49 4 56 20" stroke="currentColor" stroke-width="1.8" stroke-dasharray="4 5" stroke-linecap="round"/>
+          <path d="M147 52l12-30 18 16 16-3-8 17 6 18-18-6-15 12 1-19z" fill="#eaf299" stroke="#244834" stroke-width="1.7" stroke-linejoin="round"/>
+          <path d="M41 40v18m-9-9h18m75 66v20m-10-10h20" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+          <circle cx="79" cy="28" r="4" fill="currentColor"/><circle cx="160" cy="103" r="3" fill="currentColor"/>
+        </svg>
+      </div>
+    </section>
+
+    <div class="workspace">
+      <section class="panel composer" aria-labelledby="brief-heading">
+        <div class="section-tag"><span>01</span> INPUT</div>
+        <h2 id="brief-heading">Your brief</h2>
+        <p class="muted">Paste an assignment or handout, or try a sample.</p>
+        <div id="samples" class="samples" aria-label="Sample briefs"></div>
+        <form id="brief-form">
+          <div class="label-row"><label for="brief">Assignment brief</label><span id="char-count" class="quiet" aria-live="off">0 characters</span></div>
+          <textarea id="brief" required placeholder="Paste your assignment instructions here…" rows="13"></textarea>
+          <div class="field">
+            <label for="start">Study start date</label>
+            <input type="date" id="start" required min="1000-01-01" max="9999-12-31" aria-describedby="start-hint">
+            <small id="start-hint" class="quiet">Anchors your plan and dates like “in 4 days.”</small>
+          </div>
+          <button class="primary" type="submit">Break down my brief <span aria-hidden="true">→</span></button>
+        </form>
+        <p class="privacy"><span aria-hidden="true">◇</span> Your brief stays on this device. No account or API key needed.</p>
+      </section>
+
+      <section class="results" aria-labelledby="results-heading">
+        <div class="results-heading">
+          <div><div class="section-tag"><span>02</span> BREAKDOWN</div><h2 id="results-heading" tabindex="-1">Your game plan</h2></div>
+          <span class="ready" id="ready" hidden><span></span> Ready to use</span>
+        </div>
+        <p class="sr-only" id="results-announcement" role="status"></p>
+        <div id="empty" class="panel empty">
+          <div class="empty-icon" aria-hidden="true">✦</div>
+          <h3>Let’s make it manageable.</h3>
+          <p>Paste a brief or tap a sample to see your summary, to-dos, deadlines, rubric, study plan, and quiz.</p>
+        </div>
+        <div id="results-body" hidden>
+          <article class="panel summary-card">
+            <div class="card-heading"><span class="icon" aria-hidden="true">✦</span><h3>In plain English</h3></div>
+            <p id="summary"></p>
+            <div class="engine-row"><span class="chip" id="engine">Heuristic fallback</span><span id="model-state" class="quiet" role="status"></span></div>
+            <button type="button" class="model-button" id="load-model">Load AI model <span aria-hidden="true">↗</span></button>
+          </article>
+          <article class="panel">
+            <div class="card-heading"><span class="icon" aria-hidden="true">✓</span><h3>Deliverable checklist</h3><span class="count" id="check-count"></span></div>
+            <progress id="check-progress" aria-label="Checklist progress"></progress>
+            <ul id="checklist" class="checklist"></ul>
+          </article>
+          <div class="results-grid">
+            <article class="panel">
+              <div class="card-heading"><span class="icon" aria-hidden="true">◷</span><h3>Key deadlines</h3></div>
+              <ul id="deadlines" class="fact-list"></ul>
+            </article>
+            <article class="panel">
+              <div class="card-heading"><span class="icon" aria-hidden="true">▤</span><h3>Grading criteria</h3></div>
+              <ul id="rubric" class="fact-list"></ul>
+            </article>
+          </div>
+          <article class="panel risk-card">
+            <div class="card-heading"><span class="icon" aria-hidden="true">!</span><h3>Worth double-checking</h3></div>
+            <ul id="flags" class="fact-list"></ul>
+          </article>
+          <article class="panel">
+            <div class="card-heading"><span class="icon" aria-hidden="true">↗</span><h3>Study plan</h3></div>
+            <p id="plan-note" class="muted"></p>
+            <ol id="plan" class="plan-list"></ol>
+          </article>
+          <article class="panel">
+            <div class="card-heading"><span class="icon" aria-hidden="true">?</span><h3>5-question self-quiz</h3></div>
+            <p class="muted">Try answering each question before you reveal the answer.</p>
+            <ol id="quiz" class="quiz-list"></ol>
+          </article>
+        </div>
+      </section>
+    </div>
+
+    <details class="panel about" id="about">
+      <summary>About the AI</summary>
+      <p><strong>Xenova/t5-small</strong> is a quantized T5 model run locally with Transformers.js 2.17.2 and WebAssembly. Loading it downloads model files from Hugging Face and runtime files from jsDelivr. Your assignment text is not sent to either service.</p>
+      <p>Until the model finishes, or if it’s unavailable, the summary comes from a local rule-based parser. That same parser always powers the checklist, dates, rubric, risk flags, plan, and quiz. Compare all results with your original brief.</p>
+      <p>The AI summary focuses on the assignment goal and hand-in instructions; use the dated and grading cards for those details.</p>
+      <div class="examples">
+        <div><h3>Example model input · Sociology</h3><p id="example-input"></p></div>
+        <div><h3>Example output · Xenova/t5-small</h3><p>Observe a public space and explain how people use it. link your observations to two course readings.</p></div>
+        <div><h3>Example output · Heuristic fallback</h3><p id="example-output"></p></div>
+      </div>
+    </details>
+  </main>
+  <footer class="shell footer"><span>BriefBuddy <span class="quiet">/</span> AI OpenBuild 2026</span><span>Use the original brief as your source of truth.</span></footer>
+</body>
+</html>

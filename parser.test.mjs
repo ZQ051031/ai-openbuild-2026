@@ -1,0 +1,41 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { analyzeBrief } from "./parser.mjs";
+import { samples } from "./samples.mjs";
+
+const expected = [
+  { items: 2, dates: ["2026-12-01", "2026-12-08"], weights: [40, 30, 20, 10], flag: "Clarify this wording", target: "2026-12-08" },
+  { items: 2, dates: ["2026-11-28", "2026-12-07", "2026-12-08"], weights: [45, 30, 15, 10], flag: "Possible deadline conflict", target: "2026-12-07" },
+  { items: 3, dates: ["2026-12-04", "2026-12-06"], weights: [35, 30, 25, 10], flag: "Clarify this wording", target: "2026-12-04" },
+];
+
+samples.forEach(({ title, text, start }, index) => {
+  test(title, () => {
+    const result = analyzeBrief(text, start);
+    const { items, dates, weights, flag, target } = expected[index];
+    assert.equal(result.deliverables.length, items);
+    assert.deepEqual(result.deadlines.map(({ date }) => date), dates);
+    assert.deepEqual(result.rubric.map(({ weight }) => weight), weights);
+    assert.ok(result.flags.some(({ title }) => title === flag));
+    assert.equal(result.plan[0].date, start);
+    assert.equal(result.plan.at(-1).date, target);
+    assert.equal(result.quiz.length, 5);
+    assert.equal(result.quiz[0].answer, result.deliverables[0]);
+    assert.match(result.summary, /Key deadline:/);
+    assert.ok(result.summarySource.includes(result.deliverables[0]));
+  });
+});
+
+test("missing and ambiguous dates are not treated as confirmed", () => {
+  const result = analyzeBrief("Write a report.\nReport due 03/04/2027.\nDraft due 2027-02-30.", "2027-03-01");
+  assert.deepEqual(result.deadlines.map(({ date }) => date), [null, null]);
+  assert.ok(result.tentativePlan);
+  assert.equal(result.plan.at(-1).date, "2027-03-08");
+  assert.ok(result.flags.some(({ title }) => title === "No length requirement found"));
+});
+
+test("relative deadlines move with the chosen start date and past dates do not create a plan", () => {
+  assert.equal(analyzeBrief("Essay due within 2 weeks.", "2026-12-01").deadlines[0].date, "2026-12-15");
+  assert.deepEqual(analyzeBrief("Report due 1 December 2026.", "2026-12-03").plan, []);
+  assert.equal(analyzeBrief(" \n "), null);
+});
