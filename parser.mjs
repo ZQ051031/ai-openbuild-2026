@@ -2,7 +2,9 @@ const DAY = 86_400_000;
 const months = "jan feb mar apr may jun jul aug sep oct nov dec".split(" ");
 const monthPattern = "(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)";
 const datePattern = new RegExp(`\\b(?:\\d{4}-\\d{2}-\\d{2}|\\d{1,2}[/.-]\\d{1,2}[/.-]\\d{4}|\\d{1,2}(?:st|nd|rd|th)?\\s+${monthPattern}(?:\\s+\\d{4})?|${monthPattern}\\s+\\d{1,2}(?:st|nd|rd|th)?(?:,?\\s+\\d{4})?|(?:in|within)\\s+\\d+\\s+(?:days?|weeks?)|today|tomorrow)\\b`, "gi");
-const duePattern = /\b(?:due|deadline|checkpoint|cut-?off|no later than|by|final\s+submission)\b/i;
+const duePattern = /\b(?:due|deadline|checkpoint|cut-?off|no later than|final\s+submission)\b/i;
+const byDatePattern = new RegExp(`\\bby\\s+(?=${datePattern.source})`, "i");
+const hasDeadlineCue = (line) => duePattern.test(line) || byDatePattern.test(line);
 const actionPattern = /^(?:please\s+)?(?:submit|upload|attach|include|create|produce|prepare|provide|present|record|hand in|turn in|write|complete|deliver|bring|send|build)\b/i;
 const tidyLine = (value) => value.trim().replace(/^\s*(?:[•*–—-]\s+|\d+[.)]\s+)/, "").trim();
 export const isoDay = (value) => value.toISOString().slice(0, 10);
@@ -80,14 +82,14 @@ export function analyzeBrief(input, start = isoDay(new Date())) {
     }
     const criterion = readRubric(line);
     if (criterion && (section === "rubric" || !actionPattern.test(line))) rubric.push(criterion);
-    if (section === "deliverables" && duePattern.test(line) && !actionPattern.test(line)) section = "";
+    if (section === "deliverables" && hasDeadlineCue(line) && !actionPattern.test(line)) section = "";
     if ((section === "deliverables" && (actionPattern.test(line) || (line.length < 160 && !criterion))) ||
         (!hasDeliverablesSection && actionPattern.test(line))) {
       for (const sentence of line.split(/(?<=[.!?])\s+(?=(?:submit|upload|attach|include|create|present|record|write|complete|build)\b)/i)) {
         if (!deliverables.includes(sentence)) deliverables.push(sentence);
       }
     }
-    if (duePattern.test(line)) {
+    if (hasDeadlineCue(line)) {
       for (const match of line.matchAll(datePattern)) {
         const raw = match[0];
         const parsed = readDate(raw, start, dateOrder);
@@ -117,7 +119,7 @@ export function analyzeBrief(input, start = isoDay(new Date())) {
   const target = primaryDeadline?.date ?? offsetDay(start, 7);
   const plan = target >= start ? buildPlan(start, target, checkpoint) : [];
   const highest = rubric.reduce((best, item) => !best || item.weight > best.weight ? item : best, null);
-  const purpose = lines.find((line, index) => index < 4 && /[.!?]$/.test(line) && !duePattern.test(line) && !readRubric(line));
+  const purpose = lines.find((line, index) => index < 4 && /[.!?]$/.test(line) && !hasDeadlineCue(line) && !readRubric(line));
   const summary = [
     purpose && abbreviated(purpose, 280),
     deliverables.length ? `What to hand in: ${deliverables.slice(0, 2).map((item) => abbreviated(item)).join(" ")}` : "No explicit hand-in instructions were found.",

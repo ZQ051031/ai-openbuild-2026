@@ -39,3 +39,9 @@ test("relative deadlines move with the chosen start date and past dates do not c
   assert.deepEqual(analyzeBrief("Report due 1 December 2026.", "2026-12-03").plan, []);
   assert.equal(analyzeBrief(" \n "), null);
 });
+
+test("bylines do not create deadlines or override a dated hand-in", () => {
+  const result = analyzeBrief("Updated by course staff on 20 November\nFinal report by 8 December 2026", "2026-11-24");
+  assert.deepEqual(result.deadlines.map(({ date }) => date), ["2026-12-08"]);
+  assert.equal(result.plan.at(-1).date, "2026-12-08");
+});
