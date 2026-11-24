@@ -9,7 +9,8 @@ const byDatePattern = new RegExp(`\\bby\\s+(?:${weekdayPattern}(?:,\\s*|\\s+))?(
 const hasDeadlineCue = (line) => duePattern.test(line) || byDatePattern.test(line);
 const deadlineClauseToken = /[()]|\s*;\s*|(?<=[.!?])\s+|(?:,\s*(?:and\s+)?|\s+and\s+)(?=(?:the\s+)?(?:draft|final|checkpoint)\b)/gi;
 const actionPattern = /^(?:please\s+)?(?:submit|upload|attach|include|create|produce|prepare|provide|present|record|hand in|turn in|write|complete|deliver|bring|send|build)\b/i;
-const tidyLine = (value) => value.trim().replace(/^\s*(?:[•*–—-]\s+|\d+[.)]\s+)/, "").trim();
+const listItemPattern = /^\s*(?:[•*–—-]\s+|\d+[.)]\s+)/;
+const tidyLine = (value) => value.trim().replace(listItemPattern, "").trim();
 const headingText = (line) => line.replace(/^#{1,6}\s+/, "");
 export const isoDay = (value) => value.toISOString().slice(0, 10);
 const offsetDay = (date, days) => isoDay(new Date(Date.parse(date) + days * DAY));
@@ -79,7 +80,8 @@ function buildPlan(start, target, checkpoint) {
 }
 
 export function analyzeBrief(input, start = isoDay(new Date())) {
-  const lines = input.split(/\r?\n/).map(tidyLine);
+  const rawLines = input.split(/\r?\n/);
+  const lines = rawLines.map(tidyLine);
   if (!lines.some(Boolean)) return null;
   const deliverables = [], deadlines = [], rubric = [], flags = [];
   const deliverablesHeading = /^(?:what to hand in|deliverables|submission requirements)\s*:?$/i;
@@ -108,8 +110,9 @@ export function analyzeBrief(input, start = isoDay(new Date())) {
     }
     const criterion = readRubric(line);
     if (criterion && (section === "rubric" || !actionPattern.test(line))) rubric.push(criterion);
-    if (section === "deliverables" && deliverables.length && lines[index - 1] === "" &&
-        hasDeadlineCue(line) && !actionPattern.test(line)) section = "";
+    if (section === "deliverables" && deliverables.length && hasDeadlineCue(line) &&
+        !actionPattern.test(line) && !listItemPattern.test(rawLines[index]) &&
+        (lines[index - 1] === "" || listItemPattern.test(rawLines[index - 1]) || duePattern.test(line))) section = "";
     if ((section === "deliverables" && (actionPattern.test(line) || (line.length < 160 && !criterion))) ||
         (!hasDeliverablesSection && actionPattern.test(line))) {
       for (const sentence of line.split(/(?<=[.!?])\s+(?=(?:submit|upload|attach|include|create|present|record|write|complete|build)\b)/i)) {

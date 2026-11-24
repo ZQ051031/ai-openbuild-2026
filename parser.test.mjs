@@ -96,3 +96,17 @@ test("parenthesized feedback dates retain their optional draft context", () => {
     assert.equal(result.plan.at(-1).date, "2026-12-08");
   }
 });
+
+test("a standalone deadline closes the deliverables list without a blank line", () => {
+  for (const [item, deadline] of [
+    ["- Submit your report", "Final report by 8 December 2026"],
+    ["Submit your report", "Final report due 8 December 2026"],
+  ]) {
+    const result = analyzeBrief(`Deliverables\n${item}\n${deadline}\nLate work is not accepted.`, "2026-11-24");
+    assert.deepEqual(result.deliverables, ["Submit your report"]);
+    assert.deepEqual(result.deadlines.map(({ date }) => date), ["2026-12-08"]);
+  }
+
+  const listed = analyzeBrief("Deliverables\n- Submit your report\n- Slides due 8 December 2026", "2026-11-24");
+  assert.deepEqual(listed.deliverables, ["Submit your report", "Slides due 8 December 2026"]);
+});
